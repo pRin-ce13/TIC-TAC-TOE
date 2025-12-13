@@ -1,0 +1,1 @@
+console.log("GAME_ROUTES.js file loaded");
