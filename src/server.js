@@ -2,6 +2,8 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
+import gameRoutes from "./routes/gameRoutes.js";
+
 
 const app = express();
 app.use(cors());
@@ -30,6 +32,10 @@ io.on("connection", (socket) => {
     console.log("A user disconnected:", socket.id);
   });
 });
+
+// Use game routes
+app.use("/api/game", gameRoutes);
+
 
 // Start server
 server.listen(3000, () => {
