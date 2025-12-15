@@ -2,46 +2,66 @@ import { GameManager } from "../services/gameManager.js";
 
 let game = null;
 
-// Start a new game
+// newGame starts a fresh match against the AI and returns the opening state.
 export const newGame = (req, res) => {
   game = new GameManager("ai");
 
-  res.json({
-    board: game.board,
-    currentPlayer: game.currentPlayer,
-    winner: game.winner
+  return res.status(200).json({
+    success: true,
+    message: "New game started",
+    data: {
+      board: game.board,
+      currentPlayer: game.currentPlayer,
+      winner: game.winner
+    }
   });
 };
 
-// Human plays a move
+// playMove validates the incoming move, lets the AI respond, and returns the updated board.
 export const playMove = (req, res) => {
   if (!game) {
-    return res.status(400).json({ error: "Game not started" });
+    return res.status(400).json({ success: false, message: "Game has not been started yet" });
   }
 
-  const { index } = req.body;
-
-  const success = game.playHumanMove(index);
-
-   // TODO: call game.playHumanMove()
-  // TODO: call game.playAIMove()
-  // TODO: return updated game state
-    
-
-  if(!success){
-    return res.status(400).json({ error: "Invalid move" });
+  if (game.winner) {
+    return res.status(400).json({ success: false, message: "Game already finished. Start a new game." });
   }
 
-  if(!game.winner){
+  const { index } = req.body ?? {};
+
+  if (index === undefined || index === null) {
+    return res.status(400).json({ success: false, message: "Move index is required" });
+  }
+
+  if (typeof index !== "number" || Number.isNaN(index)) {
+    return res.status(400).json({ success: false, message: "Move index must be a number" });
+  }
+
+  if (!Number.isInteger(index)) {
+    return res.status(400).json({ success: false, message: "Move index must be an integer" });
+  }
+
+  if (index < 0 || index > 8) {
+    return res.status(400).json({ success: false, message: "Move index must be between 0 and 8" });
+  }
+
+  const moveApplied = game.playHumanMove(index);
+
+  if (!moveApplied) {
+    return res.status(400).json({ success: false, message: "Cell already taken. Choose another spot." });
+  }
+
+  if (!game.winner) {
     game.playAIMove();
   }
 
-  res.json({
-    board: game.board,
-    currentPlayer: game.currentPlayer,
-    winner: game.winner
+  return res.status(200).json({
+    success: true,
+    message: game.winner ? "Game concluded" : "Moves applied",
+    data: {
+      board: game.board,
+      currentPlayer: game.currentPlayer,
+      winner: game.winner
+    }
   });
-
-
-  
 };

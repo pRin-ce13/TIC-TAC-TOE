@@ -7,10 +7,20 @@ export function createEmptyBoard() {
 }
 
 export function isMoveValid(board, index) {
-  return board[index] === "";
+  return (
+    Array.isArray(board) &&
+    Number.isInteger(index) &&
+    index >= 0 &&
+    index < board.length &&
+    board[index] === ""
+  );
 }
 
 export function applyMove(board, index, player) {
+  if (!isMoveValid(board, index)) {
+    throw new Error("Cannot apply move to invalid cell");
+  }
+
   const newBoard = [...board];
   newBoard[index] = player;
   return newBoard;
