@@ -1,10 +1,22 @@
 import { GameManager } from "../services/gameManager.js";
 
+const sanitizeName = (name, fallback) => {
+  if (typeof name === "string") {
+    const trimmed = name.trim();
+    if (trimmed.length > 0) {
+      return trimmed.slice(0, 40);
+    }
+  }
+  return fallback;
+};
+
 let game = null;
 
-// newGame starts a fresh match against the AI and returns the opening state.
+// newGame starts a fresh match against the AI and returns the opening state with player names.
 export const newGame = (req, res) => {
-  game = new GameManager("ai");
+  const { playerName } = req.body ?? {};
+  const humanName = sanitizeName(playerName, "Player");
+  game = new GameManager("ai", { X: humanName, O: "AI" });
 
   return res.status(200).json({
     success: true,
@@ -12,7 +24,8 @@ export const newGame = (req, res) => {
     data: {
       board: game.board,
       currentPlayer: game.currentPlayer,
-      winner: game.winner
+      winner: game.winner,
+      players: game.players
     }
   });
 };
@@ -61,7 +74,8 @@ export const playMove = (req, res) => {
     data: {
       board: game.board,
       currentPlayer: game.currentPlayer,
-      winner: game.winner
+      winner: game.winner,
+      players: game.players
     }
   });
 };
