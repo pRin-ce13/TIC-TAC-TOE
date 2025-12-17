@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
-const API_BASE = "http://localhost:3000/api/game";
+const API_BASE = (import.meta.env?.VITE_API_BASE_URL || "http://localhost:3000/api/game").replace(/\/$/, "");
 
 const WIN_PATTERNS = [
   [0, 1, 2],
@@ -17,10 +17,14 @@ const WIN_PATTERNS = [
 const initialBoard = () => Array(9).fill("");
 
 async function postJSON(endpoint, body) {
-  const response = await fetch(`${API_BASE}/${endpoint}`, {
+  const endpointPath = (endpoint || "").toString().replace(/^\//, "");
+  if (!endpointPath) {
+    throw new Error("Endpoint path is required for POST request");
+  }
+  const response = await fetch(`${API_BASE}/${endpointPath}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(body ?? {}),
   });
   if (!response.ok) {
     throw new Error("Request failed");

@@ -12,9 +12,17 @@ import {
   getPlayerSymbol
 } from "./services/roomManager.js";
 
+const allowedOrigins = (process.env.FRONTEND_ORIGIN || "*")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: allowedOrigins.length === 0 ? "*" : allowedOrigins,
+};
 
 const app = express();
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Basic API route
@@ -28,7 +36,7 @@ const server = http.createServer(app);
 // Setup WebSocket server
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: corsOptions.origin,
   },
 });
 
@@ -119,7 +127,8 @@ app.use("/api/game", gameRoutes);
 
 
 // Start server
-server.listen(3000, () => {
-  console.log("Server running on port 3000");
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
     
