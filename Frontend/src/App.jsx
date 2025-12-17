@@ -416,7 +416,7 @@ export default function App() {
 
       <div className="mode-toggle">
         <button
-          className={`mode-button ${mode === "ai" ? "active" : ""} ${hoverMode === "ai" ? "hovered" : ""} ${hoverMode === "pvp" ? "faded" : ""}`}
+          className={`mode-button ${mode === "ai" ? "active ai-active" : ""} ${hoverMode === "ai" ? "hovered" : ""} ${hoverMode === "pvp" ? "faded" : ""}`}
           onMouseEnter={() => setHoverMode("ai")}
           onMouseLeave={() => setHoverMode(null)}
           onClick={() => handleModeSelect("ai")}
@@ -425,7 +425,7 @@ export default function App() {
           Play vs AI
         </button>
         <button
-          className={`mode-button ${mode === "pvp" ? "active" : ""} ${hoverMode === "pvp" ? "hovered" : ""} ${hoverMode === "ai" ? "faded" : ""}`}
+          className={`mode-button ${mode === "pvp" ? "active pvp-active" : ""} ${hoverMode === "pvp" ? "hovered" : ""} ${hoverMode === "ai" ? "faded" : ""}`}
           onMouseEnter={() => setHoverMode("pvp")}
           onMouseLeave={() => setHoverMode(null)}
           onClick={() => handleModeSelect("pvp")}
@@ -509,18 +509,18 @@ export default function App() {
       )}
 
       <div className="controls">
-        <button onClick={handleStartGame} disabled={isLoading || gameStatus === "playing" || !symbolChoice}>
+        <button className="btn-primary" onClick={handleStartGame} disabled={isLoading || gameStatus === "playing" || !symbolChoice}>
           {isLoading ? "Working..." : "Start Game"}
         </button>
         {(gameStatus === "win" || gameStatus === "draw" || gameStatus === "closed") && (
-          <button onClick={handleNewGame} disabled={isLoading}>
+          <button className="btn-primary" onClick={handleNewGame} disabled={isLoading}>
             {isLoading ? "Working..." : "New Game"}
           </button>
         )}
-        <button onClick={handleCloseGame} disabled={isLoading || gameStatus === "closed"}>
+        <button className="btn-neutral" onClick={handleCloseGame} disabled={isLoading || gameStatus === "closed"}>
           Close Game
         </button>
-        <button onClick={handleChangeMode} disabled={isLoading}>
+        <button className="btn-secondary" onClick={handleChangeMode} disabled={isLoading}>
           Change Mode
         </button>
       </div>
@@ -536,7 +536,7 @@ export default function App() {
           return (
             <div
               key={index}
-              className={`cell ${isWinCell ? "win" : ""}`}
+              className={`cell ${isWinCell ? "win" : ""} ${cell === "X" ? "cell-x" : cell === "O" ? "cell-o" : ""}`}
               onClick={() => handleCellClick(index)}
               aria-disabled={boardBlocked}
             >
@@ -552,9 +552,9 @@ export default function App() {
             <h2>{gameOverText}</h2>
             <p>{winner === "draw" ? "No more moves left." : "Congrats to the winner!"}</p>
             <div className="modal-actions">
-              <button onClick={handleNewGame}>New Game</button>
-              <button onClick={handleCloseGame}>Close</button>
-              <button onClick={handleChangeMode}>Change Mode</button>
+              <button className="btn-primary" onClick={handleNewGame}>New Game</button>
+              <button className="btn-neutral" onClick={handleCloseGame}>Close</button>
+              <button className="btn-secondary" onClick={handleChangeMode}>Change Mode</button>
             </div>
           </div>
         </div>
