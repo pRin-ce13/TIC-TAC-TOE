@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL || "http://localhost:3000/api/game").replace(/\/$/, "");
+const RETRY_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 2200;
 
 const WIN_PATTERNS = [
   [0, 1, 2],
@@ -15,6 +17,8 @@ const WIN_PATTERNS = [
 ];
 
 const initialBoard = () => Array(9).fill("");
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function postJSON(endpoint, body) {
   const endpointPath = (endpoint || "").toString().replace(/^\//, "");
@@ -51,6 +55,7 @@ export default function App() {
   const [winner, setWinner] = useState(null);
   const [status, setStatusState] = useState("Select a mode, enter names, then Start Game.");
   const [isLoading, setIsLoading] = useState(false);
+  const [backendDown, setBackendDown] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [mode, setMode] = useState(null); // "ai" or "pvp"
   const [isModeSelected, setIsModeSelected] = useState(false);
@@ -68,6 +73,29 @@ export default function App() {
 
   const setStatusSafe = (next) => {
     setStatusState((prev) => (prev === next ? prev : next));
+  };
+
+  const apiWithRetry = async (endpoint, body, phase = "play") => {
+    let lastError = null;
+    for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        const res = await postJSON(endpoint, body);
+        setBackendDown(false);
+        return res;
+      } catch (err) {
+        lastError = err;
+        if (attempt < RETRY_ATTEMPTS) {
+          if (phase === "pre") {
+            setStatusSafe("Server is starting, please wait...");
+          }
+          await sleep(RETRY_DELAY_MS + Math.floor(Math.random() * 600));
+          continue;
+        }
+      }
+    }
+    setBackendDown(true);
+    setStatusSafe("Server is currently unavailable. Please try again later.");
+    return null;
   };
 
   const winningLine = useMemo(() => {
@@ -167,7 +195,14 @@ export default function App() {
 
     try {
       setIsLoading(true);
-      const result = await postJSON("new-game", { playerName: humanName, playerSymbol: humanSymbol, startPlayer });
+      const result = await apiWithRetry("new-game", { playerName: humanName, playerSymbol: humanSymbol, startPlayer }, "pre");
+      if (!result) {
+        setIsLoading(false);
+        setIsGameActive(false);
+        setIsModeSelected(false);
+        setGameStatus("idle");
+        return;
+      }
       const data = result.data;
       setBoard(data.board);
       setCurrentPlayer(data.currentPlayer);
@@ -183,7 +218,12 @@ export default function App() {
         if (aiTimer.current) clearTimeout(aiTimer.current);
         aiTimer.current = setTimeout(async () => {
           try {
-            const aiResult = await postJSON("ai-move", {});
+            const aiResult = await apiWithRetry("ai-move", {}, "play");
+            if (!aiResult) {
+              setIsPlayerTurn(true);
+              setGameStatus("playing");
+              return;
+            }
             const aiData = aiResult.data;
             setBoard(aiData.board);
             setCurrentPlayer(aiData.currentPlayer);
@@ -326,7 +366,12 @@ export default function App() {
 
     aiTimer.current = setTimeout(async () => {
       try {
-          const result = await postJSON("move", { index });
+        const result = await apiWithRetry("move", { index }, "play");
+        if (!result) {
+          setIsPlayerTurn(true);
+          setGameStatus("playing");
+          return;
+        }
         const data = result.data;
         // Ignore late AI responses if the game/mode has changed or ended.
         if (!isGameActive || mode !== "ai" || gameStatus !== "playing") {
@@ -357,54 +402,12 @@ export default function App() {
           setGameStatus("playing");
         }
       } catch (error) {
-        // Retry once after a short delay to allow backend cold start; if fails, revert to server-wake message.
-        setStatusSafe("Server is waking up. Please wait a moment…");
-        const retryDelay = 3500;
-        setTimeout(async () => {
-          try {
-            const retryResult = await postJSON("move", { index });
-            const retryData = retryResult.data;
-            if (!isGameActive || mode !== "ai" || gameStatus !== "playing") {
-              return;
-            }
-            setBoard(retryData.board);
-            setCurrentPlayer(retryData.currentPlayer);
-            setWinner(retryData.winner);
-            if (retryData.winner) {
-              const winnerName = retryData.winner === "X" ? playerNames.X : playerNames.O;
-              showResultWithDelay(
-                retryData.winner,
-                retryData.winner === "draw" ? "Match draw" : `${winnerName || retryData.winner} wins!`
-              );
-            } else {
-              const humanSymbol = symbolChoice;
-              if (retryData.currentPlayer === humanSymbol) {
-                setIsPlayerTurn(true);
-                const humanName = humanSymbol === "X" ? playerNames.X : playerNames.O;
-                setStatusSafe(`${humanName}'s turn (${humanSymbol})`);
-              } else {
-                setIsPlayerTurn(false);
-                const aiNameRetry = humanSymbol === "X" ? playerNames.O : playerNames.X;
-                setStatusSafe(`${aiNameRetry} is thinking...`);
-              }
-              setGameStatus("playing");
-            }
-          } catch (retryError) {
-            // Final fallback: keep user-informed but do not desync board; allow another user action.
-            setIsPlayerTurn(true);
-            setGameStatus("playing");
-            setStatusSafe("Server is waking up. Please wait a moment…");
-          } finally {
-            setIsLoading(false);
-            aiTimer.current = null;
-          }
-        }, retryDelay);
+        setIsPlayerTurn(true);
+        setGameStatus("playing");
+        setStatusSafe("Server is starting, please wait...");
       } finally {
-        // If retry succeeds, loading resets there; otherwise ensure we clear loading if no retry timer is pending.
-        if (!aiTimer.current) {
-          setIsLoading(false);
-          aiTimer.current = null;
-        }
+        setIsLoading(false);
+        aiTimer.current = null;
       }
     }, thinkDelay);
   };
@@ -455,7 +458,7 @@ export default function App() {
       try {
         await postJSON("new-game", { playerName: "warmup", playerSymbol: "X", startPlayer: "X" });
       } catch (err) {
-        // ignore
+        // ignore warmup errors
       }
     })();
 
