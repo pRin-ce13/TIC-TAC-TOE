@@ -196,7 +196,7 @@ export default function App() {
               setGameStatus("playing");
             }
           } catch (error) {
-            setStatus("AI move failed. Is backend running?");
+            setStatus("Server is waking up. Please wait a moment…");
             setIsPlayerTurn(true);
             setGameStatus("playing");
           } finally {
@@ -207,7 +207,7 @@ export default function App() {
         return;
       }
     } catch (error) {
-      setStatus("Could not start game. Is backend running?");
+      setStatus("Server is waking up. Please wait a moment…");
       setIsGameActive(false);
       setIsModeSelected(false);
       setGameStatus("idle");
@@ -353,12 +353,54 @@ export default function App() {
           setGameStatus("playing");
         }
       } catch (error) {
-        setStatus("Move blocked. Maybe backend stopped?");
-        setIsPlayerTurn(true);
-        setGameStatus("playing");
+        // Retry once after a short delay to allow backend cold start; if fails, revert to server-wake message.
+        setStatus("Server is waking up. Please wait a moment…");
+        const retryDelay = 3500;
+        setTimeout(async () => {
+          try {
+            const retryResult = await postJSON("move", { index });
+            const retryData = retryResult.data;
+            if (!isGameActive || mode !== "ai" || gameStatus !== "playing") {
+              return;
+            }
+            setBoard(retryData.board);
+            setCurrentPlayer(retryData.currentPlayer);
+            setWinner(retryData.winner);
+            if (retryData.winner) {
+              const winnerName = retryData.winner === "X" ? playerNames.X : playerNames.O;
+              showResultWithDelay(
+                retryData.winner,
+                retryData.winner === "draw" ? "Match draw" : `${winnerName || retryData.winner} wins!`
+              );
+            } else {
+              const humanSymbol = symbolChoice;
+              if (retryData.currentPlayer === humanSymbol) {
+                setIsPlayerTurn(true);
+                const humanName = humanSymbol === "X" ? playerNames.X : playerNames.O;
+                setStatus(`${humanName}'s turn (${humanSymbol})`);
+              } else {
+                setIsPlayerTurn(false);
+                const aiNameRetry = humanSymbol === "X" ? playerNames.O : playerNames.X;
+                setStatus(`${aiNameRetry} is thinking...`);
+              }
+              setGameStatus("playing");
+            }
+          } catch (retryError) {
+            // Final fallback: keep user-informed but do not desync board; allow another user action.
+            setIsPlayerTurn(true);
+            setGameStatus("playing");
+            setStatus("Server is waking up. Please wait a moment…");
+          } finally {
+            setIsLoading(false);
+            aiTimer.current = null;
+          }
+        }, retryDelay);
       } finally {
-        setIsLoading(false);
-        aiTimer.current = null;
+        // If retry succeeds, loading resets there; otherwise ensure we clear loading if no retry timer is pending.
+        if (!aiTimer.current) {
+          setIsLoading(false);
+          aiTimer.current = null;
+        }
       }
     }, thinkDelay);
   };
@@ -404,6 +446,15 @@ export default function App() {
     isLoading || !isPlayerTurn || !!winner || !isModeSelected || !isGameActive || gameStatus !== "playing";
 
   useEffect(() => {
+    // Warm-up: attempt a silent call to wake the backend; ignore failures.
+    (async () => {
+      try {
+        await postJSON("new-game", { playerName: "warmup", playerSymbol: "X", startPlayer: "X" });
+      } catch (err) {
+        // ignore
+      }
+    })();
+
     return () => {
       if (resultTimer.current) {
         clearTimeout(resultTimer.current);
