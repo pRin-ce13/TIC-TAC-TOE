@@ -49,7 +49,7 @@ export default function App() {
   const [board, setBoard] = useState(initialBoard);
   const [currentPlayer, setCurrentPlayer] = useState("X");
   const [winner, setWinner] = useState(null);
-  const [status, setStatus] = useState("Select a mode, enter names, then Start Game.");
+  const [status, setStatusState] = useState("Select a mode, enter names, then Start Game.");
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [mode, setMode] = useState(null); // "ai" or "pvp"
@@ -66,6 +66,10 @@ export default function App() {
   const lastModeRef = useRef(null);
   const lastNamesRef = useRef({}); // { human, ai } or { p1, p2 }
 
+  const setStatusSafe = (next) => {
+    setStatusState((prev) => (prev === next ? prev : next));
+  };
+
   const winningLine = useMemo(() => {
     if (!winner || winner === "draw") return [];
     for (const line of WIN_PATTERNS) {
@@ -81,7 +85,7 @@ export default function App() {
     setBoard(initialBoard());
     setCurrentPlayer("X");
     setWinner(null);
-    setStatus(statusMessage);
+    setStatusSafe(statusMessage);
     setShowModal(false);
     setIsGameActive(false);
     setIsPlayerTurn(false);
@@ -98,7 +102,7 @@ export default function App() {
 
   const showResultWithDelay = (outcome, text) => {
     setWinner(outcome);
-    setStatus(text);
+    setStatusSafe(text);
     setIsGameActive(false);
     setIsPlayerTurn(false);
     setGameStatus(outcome === "draw" ? "draw" : "win");
@@ -138,7 +142,7 @@ export default function App() {
     setBoard(initialBoard());
     setCurrentPlayer("X");
     setShowModal(false);
-    setStatus("Starting new game...");
+    setStatusSafe("Starting new game...");
 
     if (selectedMode === "pvp") {
       lastNamesRef.current = names;
@@ -148,7 +152,7 @@ export default function App() {
       const startPlayer = Math.random() < 0.5 ? "X" : "O";
       setCurrentPlayer(startPlayer);
       setIsPlayerTurn(true);
-      setStatus(`${(startPlayer === "X" ? playerX : playerO)}'s turn (${startPlayer})`);
+      setStatusSafe(`${(startPlayer === "X" ? playerX : playerO)}'s turn (${startPlayer})`);
       return;
     }
 
@@ -158,7 +162,7 @@ export default function App() {
     const aiName = names.ai;
     lastNamesRef.current = names;
     setPlayerNames({ X: humanSymbol === "X" ? humanName : aiName, O: humanSymbol === "O" ? humanName : aiName });
-    setStatus("Starting new game vs AI...");
+    setStatusSafe("Starting new game vs AI...");
     const startPlayer = Math.random() < 0.5 ? humanSymbol : aiSymbol;
 
     try {
@@ -170,11 +174,11 @@ export default function App() {
       setWinner(data.winner);
       if (data.currentPlayer === humanSymbol) {
         setIsPlayerTurn(true);
-        setStatus(`${humanName}'s turn (${humanSymbol})`);
+        setStatusSafe(`${humanName}'s turn (${humanSymbol})`);
         setIsLoading(false);
       } else {
         setIsPlayerTurn(false);
-        setStatus(`${aiName} is thinking...`);
+        setStatusSafe(`${aiName} is thinking...`);
         const thinkDelay = 800 + Math.floor(Math.random() * 200);
         if (aiTimer.current) clearTimeout(aiTimer.current);
         aiTimer.current = setTimeout(async () => {
@@ -192,11 +196,11 @@ export default function App() {
               );
             } else {
               setIsPlayerTurn(true);
-              setStatus(`${humanName}'s turn (${humanSymbol === "X" ? "X" : "O"})`);
+              setStatusSafe(`${humanName}'s turn (${humanSymbol === "X" ? "X" : "O"})`);
               setGameStatus("playing");
             }
           } catch (error) {
-            setStatus("Server is waking up. Please wait a moment…");
+            setStatusSafe("Server is waking up. Please wait a moment…");
             setIsPlayerTurn(true);
             setGameStatus("playing");
           } finally {
@@ -207,7 +211,7 @@ export default function App() {
         return;
       }
     } catch (error) {
-      setStatus("Server is waking up. Please wait a moment…");
+      setStatusSafe("Server is waking up. Please wait a moment…");
       setIsGameActive(false);
       setIsModeSelected(false);
       setGameStatus("idle");
@@ -227,14 +231,14 @@ export default function App() {
         ? { ...prev, human: "", ai: "Computer", p1: "", p2: "" }
         : { ...prev, p1: "", p2: "", human: "", ai: "Computer" }
     ));
-    setStatus("Enter player names, then Start Game.");
+    setStatusSafe("Enter player names, then Start Game.");
   };
 
   const handleStartGame = async () => {
     const activeMode = mode || lastModeRef.current;
     const hasMode = Boolean(activeMode);
     if (!hasMode) {
-      setStatus("Select a mode first.");
+      setStatusSafe("Select a mode first.");
       return;
     }
     const validation = validateNames(activeMode);
@@ -244,10 +248,10 @@ export default function App() {
     }
     const symbolValidation = validateSymbol();
     if (!symbolValidation.ok) {
-      setStatus(symbolValidation.message);
+      setStatusSafe(symbolValidation.message);
       return;
     }
-    setStatus("Starting new game...");
+    setStatusSafe("Starting server… please wait (first time only)");
     setIsModeSelected(true);
     await startGameForMode(activeMode, validation.names, symbolChoice);
   };
@@ -255,13 +259,13 @@ export default function App() {
   const handleNewGame = async () => {
     const activeMode = mode || lastModeRef.current;
     if (!activeMode || !symbolChoice) {
-      setStatus("Select mode, names, and symbol, then Start Game.");
+      setStatusSafe("Select mode, names, and symbol, then Start Game.");
       return;
     }
     if (activeMode === "ai") {
       const names = lastNamesRef.current?.human ? lastNamesRef.current : null;
       if (!names) {
-        setStatus("Enter names and start once before restarting.");
+        setStatusSafe("Enter names and start once before restarting.");
         return;
       }
       await startGameForMode(activeMode, names, symbolChoice);
@@ -277,13 +281,13 @@ export default function App() {
 
   const handleCellClick = async (index) => {
     if (!isGameActive || !isModeSelected || gameStatus !== "playing") {
-      setStatus("Start the game first.");
+      setStatusSafe("Start the game first.");
       return;
     }
     if (isLoading || winner) return;
     if (!isPlayerTurn) return;
     if (!board || board[index]) {
-      setStatus("Please choose an empty cell");
+      setStatusSafe("Please choose an empty cell");
       return;
     }
 
@@ -302,7 +306,7 @@ export default function App() {
       }
       const nextPlayer = currentPlayer === "X" ? "O" : "X";
       setCurrentPlayer(nextPlayer);
-      setStatus(`${playerNames[nextPlayer]}'s turn (${nextPlayer})`);
+      setStatusSafe(`${playerNames[nextPlayer]}'s turn (${nextPlayer})`);
       return;
     }
 
@@ -312,7 +316,7 @@ export default function App() {
     setBoard(optimisticBoard);
     setIsPlayerTurn(false);
     const aiName = symbolChoice === "X" ? playerNames.O : playerNames.X;
-    setStatus(`${aiName} is thinking...`);
+    setStatusSafe(`${aiName} is thinking...`);
     setIsLoading(true);
     const thinkDelay = 800 + Math.floor(Math.random() * 200);
 
@@ -322,7 +326,7 @@ export default function App() {
 
     aiTimer.current = setTimeout(async () => {
       try {
-        const result = await postJSON("move", { index });
+          const result = await postJSON("move", { index });
         const data = result.data;
         // Ignore late AI responses if the game/mode has changed or ended.
         if (!isGameActive || mode !== "ai" || gameStatus !== "playing") {
@@ -344,17 +348,17 @@ export default function App() {
           if (data.currentPlayer === humanSymbol) {
             setIsPlayerTurn(true);
             const humanName = humanSymbol === "X" ? playerNames.X : playerNames.O;
-            setStatus(`${humanName}'s turn (${humanSymbol})`);
+            setStatusSafe(`${humanName}'s turn (${humanSymbol})`);
           } else {
             setIsPlayerTurn(false);
             const aiName = humanSymbol === "X" ? playerNames.O : playerNames.X;
-            setStatus(`${aiName} is thinking...`);
+            setStatusSafe(`${aiName} is thinking...`);
           }
           setGameStatus("playing");
         }
       } catch (error) {
         // Retry once after a short delay to allow backend cold start; if fails, revert to server-wake message.
-        setStatus("Server is waking up. Please wait a moment…");
+        setStatusSafe("Server is waking up. Please wait a moment…");
         const retryDelay = 3500;
         setTimeout(async () => {
           try {
@@ -377,11 +381,11 @@ export default function App() {
               if (retryData.currentPlayer === humanSymbol) {
                 setIsPlayerTurn(true);
                 const humanName = humanSymbol === "X" ? playerNames.X : playerNames.O;
-                setStatus(`${humanName}'s turn (${humanSymbol})`);
+                setStatusSafe(`${humanName}'s turn (${humanSymbol})`);
               } else {
                 setIsPlayerTurn(false);
                 const aiNameRetry = humanSymbol === "X" ? playerNames.O : playerNames.X;
-                setStatus(`${aiNameRetry} is thinking...`);
+                setStatusSafe(`${aiNameRetry} is thinking...`);
               }
               setGameStatus("playing");
             }
@@ -389,7 +393,7 @@ export default function App() {
             // Final fallback: keep user-informed but do not desync board; allow another user action.
             setIsPlayerTurn(true);
             setGameStatus("playing");
-            setStatus("Server is waking up. Please wait a moment…");
+            setStatusSafe("Server is waking up. Please wait a moment…");
           } finally {
             setIsLoading(false);
             aiTimer.current = null;
@@ -565,11 +569,11 @@ export default function App() {
 
       <div className="controls">
         <button className="btn-primary" onClick={handleStartGame} disabled={isLoading || gameStatus === "playing" || !symbolChoice}>
-          {isLoading ? "Working..." : "Start Game"}
+          {isLoading ? "Starting server… please wait" : "Start Game"}
         </button>
         {(gameStatus === "win" || gameStatus === "draw" || gameStatus === "closed") && (
           <button className="btn-primary" onClick={handleNewGame} disabled={isLoading}>
-            {isLoading ? "Working..." : "New Game"}
+            {isLoading ? "Starting server… please wait" : "New Game"}
           </button>
         )}
         <button className="btn-neutral" onClick={handleCloseGame} disabled={isLoading || gameStatus === "closed"}>
