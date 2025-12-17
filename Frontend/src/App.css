@@ -21,6 +21,77 @@
 .controls {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.name-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 640px;
+  background: #fff;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.symbol-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 640px;
+  background: #fff;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.panel-title {
+  font-weight: 600;
+  color: #222;
+}
+
+.symbol-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.symbol-button {
+  padding: 0.5rem 1rem;
+  background: #eee;
+  color: #222;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.symbol-button.active {
+  background: #00a37a;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.symbol-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.name-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+  color: #222;
+}
+
+.name-panel input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.95rem;
 }
 
 button {

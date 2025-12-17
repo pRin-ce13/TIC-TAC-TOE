@@ -14,9 +14,15 @@ let game = null;
 
 // newGame starts a fresh match against the AI and returns the opening state with player names.
 export const newGame = (req, res) => {
-  const { playerName } = req.body ?? {};
+  const { playerName, playerSymbol, startPlayer } = req.body ?? {};
   const humanName = sanitizeName(playerName, "Player");
-  game = new GameManager("ai", { X: humanName, O: "AI" });
+  const humanSymbol = playerSymbol === "O" ? "O" : "X";
+  const aiSymbol = humanSymbol === "X" ? "O" : "X";
+  const players = humanSymbol === "X"
+    ? { X: humanName, O: "AI" }
+    : { X: "AI", O: humanName };
+  const start = startPlayer === "O" ? "O" : "X";
+  game = new GameManager("ai", players, { humanSymbol }, start);
 
   return res.status(200).json({
     success: true,
@@ -25,7 +31,9 @@ export const newGame = (req, res) => {
       board: game.board,
       currentPlayer: game.currentPlayer,
       winner: game.winner,
-      players: game.players
+      players: game.players,
+      humanSymbol,
+      aiSymbol
     }
   });
 };
@@ -61,7 +69,7 @@ export const playMove = (req, res) => {
   const moveApplied = game.playHumanMove(index);
 
   if (!moveApplied) {
-    return res.status(400).json({ success: false, message: "Cell already taken. Choose another spot." });
+    return res.status(400).json({ success: false, message: "Move rejected. Check turn and cell." });
   }
 
   if (!game.winner) {
@@ -75,7 +83,37 @@ export const playMove = (req, res) => {
       board: game.board,
       currentPlayer: game.currentPlayer,
       winner: game.winner,
-      players: game.players
+      players: game.players,
+      humanSymbol: game.humanSymbol,
+      aiSymbol: game.aiSymbol
+    }
+  });
+};
+
+export const aiMove = (req, res) => {
+  if (!game) {
+    return res.status(400).json({ success: false, message: "Game has not been started yet" });
+  }
+
+  if (game.winner) {
+    return res.status(400).json({ success: false, message: "Game already finished. Start a new game." });
+  }
+
+  const moved = game.playAIMove();
+  if (!moved) {
+    return res.status(400).json({ success: false, message: "Not AI turn" });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: game.winner ? "Game concluded" : "AI moved",
+    data: {
+      board: game.board,
+      currentPlayer: game.currentPlayer,
+      winner: game.winner,
+      players: game.players,
+      humanSymbol: game.humanSymbol,
+      aiSymbol: game.aiSymbol
     }
   });
 };
