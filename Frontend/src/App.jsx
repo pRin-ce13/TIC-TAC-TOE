@@ -445,13 +445,14 @@ export default function App() {
   };
 
   const handleChangeMode = () => {
-    resetBoard("Select a mode, enter names, then Start Game.");
-    setMode(null);
-    setIsModeSelected(false);
+    const newMode = mode === "ai" ? "pvp" : "ai";
+    resetBoard(newMode === "ai" ? "Enter your name and Start Game." : "Enter player names and Start Game.");
+    setMode(newMode);
+    setIsModeSelected(true);
     setPlayerNames({ X: "", O: "" });
     setNameInputs({ human: "", ai: "Computer", p1: "", p2: "" });
     setGameStatus("idle");
-    lastModeRef.current = null;
+    lastModeRef.current = newMode;
     setSymbolChoice(null);
     lastNamesRef.current = {};
   };
@@ -569,7 +570,7 @@ export default function App() {
           ) : (
             <>
               <label>
-                Player 1 Name (X)
+                Player 1 Name
                 <input
                   type="text"
                   value={nameInputs.p1}
@@ -579,7 +580,7 @@ export default function App() {
                 />
               </label>
               <label>
-                Player 2 Name (O)
+                Player 2 Name
                 <input
                   type="text"
                   value={nameInputs.p2}
@@ -595,11 +596,11 @@ export default function App() {
 
       <div className="controls">
         <button className="btn-primary" onClick={handleStartGame} disabled={backendDown || isLoading || gameStatus === "playing" || !symbolChoice}>
-          {isLoading ? "Starting server… please wait" : "Start Game"}
+          Start Game
         </button>
         {(gameStatus === "win" || gameStatus === "draw" || gameStatus === "closed") && (
           <button className="btn-primary" onClick={handleNewGame} disabled={backendDown || isLoading}>
-            {isLoading ? "Starting server… please wait" : "New Game"}
+            New Game
           </button>
         )}
         <button className="btn-neutral" onClick={handleCloseGame} disabled={backendDown || isLoading || gameStatus === "closed"}>
