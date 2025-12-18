@@ -75,6 +75,17 @@ export default function App() {
     setStatusState((prev) => (prev === next ? prev : next));
   };
 
+  const handleRetryBackend = async () => {
+    setBackendDown(false);
+    setIsLoading(true);
+    setStatusSafe("Server is starting, please wait...");
+    const res = await apiWithRetry("new-game", { playerName: "retry", playerSymbol: "X", startPlayer: "X" }, "pre");
+    if (res) {
+      setStatusSafe("Server ready. Start a game.");
+    }
+    setIsLoading(false);
+  };
+
   const apiWithRetry = async (endpoint, body, phase = "play") => {
     let lastError = null;
     for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt += 1) {
@@ -275,6 +286,10 @@ export default function App() {
   };
 
   const handleStartGame = async () => {
+    if (backendDown) {
+      setStatusSafe("Server is currently unavailable. Please try again later.");
+      return;
+    }
     const activeMode = mode || lastModeRef.current;
     const hasMode = Boolean(activeMode);
     if (!hasMode) {
@@ -297,6 +312,10 @@ export default function App() {
   };
 
   const handleNewGame = async () => {
+    if (backendDown) {
+      setStatusSafe("Server is currently unavailable. Please try again later.");
+      return;
+    }
     const activeMode = mode || lastModeRef.current;
     if (!activeMode || !symbolChoice) {
       setStatusSafe("Select mode, names, and symbol, then Start Game.");
@@ -320,6 +339,10 @@ export default function App() {
   };
 
   const handleCellClick = async (index) => {
+    if (backendDown) {
+      setStatusSafe("Server is currently unavailable. Please try again later.");
+      return;
+    }
     if (!isGameActive || !isModeSelected || gameStatus !== "playing") {
       setStatusSafe("Start the game first.");
       return;
@@ -450,7 +473,7 @@ export default function App() {
           : `${currentPlayer === symbolChoice ? (playerNames[currentPlayer] || "You") : playerNames[currentPlayer] || "AI"}'s turn (${currentPlayer})`;
 
   const boardBlocked =
-    isLoading || !isPlayerTurn || !!winner || !isModeSelected || !isGameActive || gameStatus !== "playing";
+    backendDown || isLoading || !isPlayerTurn || !!winner || !isModeSelected || !isGameActive || gameStatus !== "playing";
 
   useEffect(() => {
     // Warm-up: attempt a silent call to wake the backend; ignore failures.
@@ -524,7 +547,7 @@ export default function App() {
           {mode === "ai" ? (
             <>
               <label>
-                Player Name (X)
+                Player Name
                 <input
                   type="text"
                   value={nameInputs.human}
@@ -534,7 +557,7 @@ export default function App() {
                 />
               </label>
               <label>
-                AI Name (O)
+                AI Name
                 <input
                   type="text"
                   value={nameInputs.ai}
@@ -571,20 +594,25 @@ export default function App() {
       )}
 
       <div className="controls">
-        <button className="btn-primary" onClick={handleStartGame} disabled={isLoading || gameStatus === "playing" || !symbolChoice}>
+        <button className="btn-primary" onClick={handleStartGame} disabled={backendDown || isLoading || gameStatus === "playing" || !symbolChoice}>
           {isLoading ? "Starting server… please wait" : "Start Game"}
         </button>
         {(gameStatus === "win" || gameStatus === "draw" || gameStatus === "closed") && (
-          <button className="btn-primary" onClick={handleNewGame} disabled={isLoading}>
+          <button className="btn-primary" onClick={handleNewGame} disabled={backendDown || isLoading}>
             {isLoading ? "Starting server… please wait" : "New Game"}
           </button>
         )}
-        <button className="btn-neutral" onClick={handleCloseGame} disabled={isLoading || gameStatus === "closed"}>
+        <button className="btn-neutral" onClick={handleCloseGame} disabled={backendDown || isLoading || gameStatus === "closed"}>
           Close Game
         </button>
         <button className="btn-secondary" onClick={handleChangeMode} disabled={isLoading}>
           Change Mode
         </button>
+        {backendDown && (
+          <button className="btn-primary" onClick={handleRetryBackend} disabled={isLoading}>
+            Retry Server
+          </button>
+        )}
       </div>
 
       <div className="info-row">
