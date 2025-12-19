@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import Snowfall from "react-snowfall";
 import "./App.css";
 
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL || "http://localhost:3000/api/game").replace(/\/$/, "");
@@ -66,6 +67,7 @@ export default function App() {
   const [nameInputs, setNameInputs] = useState({ human: "", ai: "Computer", p1: "", p2: "" });
   const [playerNames, setPlayerNames] = useState({ X: "", O: "" });
   const [symbolChoice, setSymbolChoice] = useState(null); // "X" | "O" | null
+  const [winterMode, setWinterMode] = useState(false);
   const resultTimer = useRef(null);
   const aiTimer = useRef(null);
   const lastModeRef = useRef(null);
@@ -497,10 +499,33 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app">
-      <h1>Tic Tac Toe</h1>
+    <>
+      {winterMode && (
+        <Snowfall
+          color="#dbeafe"
+          snowflakeCount={80}
+          style={{ position: "fixed", width: "100vw", height: "100vh", pointerEvents: "none", top: 0, left: 0, zIndex: 8 }}
+          radius={[1.5, 3.5]}
+          speed={[0.5, 1.2]}
+          wind={[-0.6, 0.8]}
+        />
+      )}
 
-      <div className="mode-toggle">
+      <div className="app">
+        <h1>Tic Tac Toe</h1>
+
+        <div className="winter-bar">
+          <button
+            type="button"
+            className={`btn-neutral winter-toggle-btn ${winterMode ? "on" : "off"}`}
+            onClick={() => setWinterMode((prev) => !prev)}
+          >
+            <span className="winter-icon" aria-hidden="true" />
+            Winter Mode {winterMode ? "On" : "Off"}
+          </button>
+        </div>
+
+        <div className="mode-toggle">
         <button
           className={`mode-button ${mode === "ai" ? "active ai-active" : ""} ${hoverMode === "ai" ? "hovered" : ""} ${hoverMode === "pvp" ? "faded" : ""}`}
           onMouseEnter={() => setHoverMode("ai")}
@@ -651,5 +676,6 @@ export default function App() {
         </div>
       )}
     </div>
+    </>
   );
 }
