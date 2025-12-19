@@ -499,19 +499,19 @@ export default function App() {
   }, []);
 
   return (
-    <>
+    <div className="app">
       {winterMode && (
         <Snowfall
           color="#dbeafe"
           snowflakeCount={80}
-          style={{ position: "fixed", width: "100vw", height: "100vh", pointerEvents: "none", top: 0, left: 0, zIndex: 8 }}
+          style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", pointerEvents: "none", zIndex: 0 }}
           radius={[1.5, 3.5]}
           speed={[0.5, 1.2]}
           wind={[-0.6, 0.8]}
         />
       )}
 
-      <div className="app">
+      <div className="app-content">
         <h1>Tic Tac Toe</h1>
 
         <div className="winter-bar">
@@ -675,7 +675,7 @@ export default function App() {
           </div>
         </div>
       )}
+      </div>
     </div>
-    </>
   );
 }
